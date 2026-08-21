@@ -1,0 +1,949 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Secure PKT Exam Portal</title>
+
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+        background: #fafafa;
+      }
+
+      .container {
+        max-width: 750px;
+        margin: 0 auto;
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+
+      .candidate-box {
+        text-align: left;
+        max-width: 500px;
+        margin: 20px auto;
+      }
+
+      .candidate-box label {
+        display: block;
+        font-weight: bold;
+        margin-top: 15px;
+        margin-bottom: 6px;
+      }
+
+      .candidate-box input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+      }
+
+      #videoCanvas {
+        border: 2px solid #111;
+        margin: 15px auto;
+        display: block;
+        width: 180px;
+        height: 135px;
+        background: #eee;
+        border-radius: 6px;
+        transform: scaleX(-1);
+      }
+
+      .success {
+        color: #155724;
+        background: #d4edda;
+        padding: 15px;
+        border-radius: 6px;
+        font-weight: bold;
+        margin: 15px 0;
+      }
+
+      .error {
+        color: #721c24;
+        background: #f8d7da;
+        padding: 15px;
+        border-radius: 6px;
+        font-weight: bold;
+        border: 1px solid #f5c6cb;
+        margin: 15px 0;
+      }
+
+      .warning {
+        color: #856404;
+        background: #fff3cd;
+        padding: 15px;
+        border-radius: 6px;
+        font-weight: bold;
+        margin: 15px 0;
+      }
+
+      .timer-box {
+        font-size: 22px;
+        font-weight: bold;
+        color: #e03131;
+        background: #fff5f5;
+        border: 1px solid #ffc9c9;
+        padding: 8px 16px;
+        display: inline-block;
+        border-radius: 6px;
+        margin-bottom: 15px;
+      }
+
+      #startButton {
+        background: #198754;
+        color: white;
+        border: none;
+        padding: 14px 28px;
+        font-size: 17px;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 15px 0;
+      }
+
+      #startButton:hover {
+        background: #157347;
+      }
+
+      #startButton:disabled {
+        background: #888;
+        cursor: not-allowed;
+      }
+
+      iframe {
+        width: 100%;
+        height: 600px;
+        border: none;
+        border-radius: 8px;
+        margin-top: 15px;
+      }
+
+      .candidate-info {
+        background: #f5f5f5;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        font-size: 14px;
+        color: #555;
+      }
+
+      #progressInfo {
+        display: none;
+        margin-top: 10px;
+        font-size: 13px;
+        color: #666;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+
+      <h1>Product Knowledge Test (PKT)</h1>
+
+      <p style="color: #666; font-size: 14px">
+        Warning: Switching tabs or minimizing the exam window will immediately
+        fail the exam.
+      </p>
+
+      <!-- ============================= -->
+      <!-- CANDIDATE INFORMATION -->
+      <!-- ============================= -->
+
+      <div id="candidateSection" class="candidate-box">
+
+        <label for="agentName">
+          Agent Name
+        </label>
+
+        <input
+          type="text"
+          id="agentName"
+          placeholder="Enter Agent Name"
+          autocomplete="off"
+        />
+
+        <label for="empId">
+          EMP ID
+        </label>
+
+        <input
+          type="text"
+          id="empId"
+          placeholder="Enter EMP ID"
+          autocomplete="off"
+        />
+
+      </div>
+
+      <!-- STATUS -->
+
+      <div id="statusMessage" class="warning">
+        Enter Agent Name and EMP ID before starting the exam.
+      </div>
+
+      <!-- START -->
+
+      <button id="startButton" type="button">
+        Allow Camera &amp; Start Exam
+      </button>
+
+      <!-- TIMER -->
+
+      <div id="timerContainer" class="timer-box" style="display: none">
+        Time Remaining:
+        <span id="countdown">20:00</span>
+      </div>
+
+      <!-- CAMERA -->
+
+      <video
+        id="videoCanvas"
+        autoplay
+        playsinline
+        muted
+        style="display: none"
+      ></video>
+
+      <!-- CANDIDATE INFO AFTER START -->
+
+      <div
+        id="candidateInfo"
+        class="candidate-info"
+        style="display: none"
+      ></div>
+
+      <!-- PROGRESS -->
+
+      <div id="progressInfo">
+        Tally page reached:
+        <strong id="currentPage">1</strong>
+      </div>
+
+      <!-- TALLY TEST -->
+
+      <div id="testContainer" style="display: none">
+
+        <iframe
+          id="tallyFrame"
+          src=""
+          title="PKT Test"
+          allow="camera; microphone"
+        ></iframe>
+
+      </div>
+
+    </div>
+
+    <script>
+
+      // =====================================================
+      // ELEMENTS
+      // =====================================================
+
+      const startButton =
+        document.getElementById("startButton");
+
+      const statusMessage =
+        document.getElementById("statusMessage");
+
+      const video =
+        document.getElementById("videoCanvas");
+
+      const timerContainer =
+        document.getElementById("timerContainer");
+
+      const countdownElement =
+        document.getElementById("countdown");
+
+      const testContainer =
+        document.getElementById("testContainer");
+
+      const tallyFrame =
+        document.getElementById("tallyFrame");
+
+      const agentNameInput =
+        document.getElementById("agentName");
+
+      const empIdInput =
+        document.getElementById("empId");
+
+      const candidateSection =
+        document.getElementById("candidateSection");
+
+      const candidateInfo =
+        document.getElementById("candidateInfo");
+
+      const progressInfo =
+        document.getElementById("progressInfo");
+
+      const currentPage =
+        document.getElementById("currentPage");
+
+
+      // =====================================================
+      // VARIABLES
+      // =====================================================
+
+      let examStarted = false;
+
+      let examFailed = false;
+
+      let timerInterval = null;
+
+      let lastTallyPage = 1;
+
+      let agentName = "";
+
+      let empId = "";
+
+
+      // 20 minutes
+
+      let timeLeft = 20 * 60;
+
+
+      // =====================================================
+      // TALLY FORM
+      // =====================================================
+
+      const TALLY_FORM_URL =
+        "https://tally.so/r/ZjbodA";
+
+
+      // =====================================================
+      // START BUTTON
+      // =====================================================
+
+      startButton.addEventListener(
+        "click",
+        startExam
+      );
+
+
+      // =====================================================
+      // START EXAM
+      // =====================================================
+
+      async function startExam() {
+
+        if (examStarted || examFailed) {
+          return;
+        }
+
+
+        // -----------------------------------------------
+        // VALIDATE AGENT NAME
+        // -----------------------------------------------
+
+        agentName =
+          agentNameInput.value.trim();
+
+        empId =
+          empIdInput.value.trim();
+
+
+        if (!agentName) {
+
+          statusMessage.className = "error";
+
+          statusMessage.textContent =
+            "Please enter the Agent Name.";
+
+          agentNameInput.focus();
+
+          return;
+        }
+
+
+        // -----------------------------------------------
+        // VALIDATE EMP ID
+        // -----------------------------------------------
+
+        if (!empId) {
+
+          statusMessage.className = "error";
+
+          statusMessage.textContent =
+            "Please enter the EMP ID.";
+
+          empIdInput.focus();
+
+          return;
+        }
+
+
+        startButton.disabled = true;
+
+
+        statusMessage.className = "warning";
+
+        statusMessage.textContent =
+          "Requesting camera permission...";
+
+
+        try {
+
+          // ---------------------------------------------
+          // CAMERA CHECK
+          // ---------------------------------------------
+
+          if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia
+          ) {
+
+            throw new Error(
+              "Camera access is not available in this browser."
+            );
+
+          }
+
+
+          const stream =
+            await navigator.mediaDevices.getUserMedia({
+
+              video: true,
+
+              audio: false
+
+            });
+
+
+          // ---------------------------------------------
+          // SHOW CAMERA
+          // ---------------------------------------------
+
+          video.srcObject = stream;
+
+          video.style.display = "block";
+
+
+          // ---------------------------------------------
+          // CREATE TALLY URL
+          // ---------------------------------------------
+
+          const tallyUrl =
+            TALLY_FORM_URL +
+            "?agent_name=" +
+            encodeURIComponent(agentName) +
+            "&emp_id=" +
+            encodeURIComponent(empId);
+
+
+          /*
+            Tally hidden fields:
+
+            agent_name
+            emp_id
+
+            Make sure these two Hidden Fields exist
+            inside your Tally form.
+          */
+
+
+          tallyFrame.src = tallyUrl;
+
+
+          // ---------------------------------------------
+          // MARK EXAM STARTED
+          // ---------------------------------------------
+
+          examStarted = true;
+
+
+          // ---------------------------------------------
+          // STATUS
+          // ---------------------------------------------
+
+          statusMessage.className = "success";
+
+          statusMessage.textContent =
+            "Camera connected. Proctoring is active. Your exam has started.";
+
+
+          // ---------------------------------------------
+          // HIDE INPUTS
+          // ---------------------------------------------
+
+          candidateSection.style.display = "none";
+
+          startButton.style.display = "none";
+
+
+          // ---------------------------------------------
+          // SHOW TIMER
+          // ---------------------------------------------
+
+          timerContainer.style.display =
+            "inline-block";
+
+
+          // ---------------------------------------------
+          // SHOW CANDIDATE
+          // ---------------------------------------------
+
+          candidateInfo.style.display = "block";
+
+          candidateInfo.innerHTML =
+            "<strong>Agent:</strong> " +
+            escapeHtml(agentName) +
+            " &nbsp; | &nbsp; " +
+            "<strong>EMP ID:</strong> " +
+            escapeHtml(empId);
+
+
+          // ---------------------------------------------
+          // SHOW TALLY
+          // ---------------------------------------------
+
+          testContainer.style.display = "block";
+
+
+          // ---------------------------------------------
+          // SHOW PROGRESS
+          // ---------------------------------------------
+
+          progressInfo.style.display = "block";
+
+
+          // ---------------------------------------------
+          // START TIMER
+          // ---------------------------------------------
+
+          startTimer();
+
+
+          // ---------------------------------------------
+          // SECURITY
+          // ---------------------------------------------
+
+          setupSecurityListeners();
+
+
+        } catch (error) {
+
+          console.error(
+            "Camera error:",
+            error
+          );
+
+
+          statusMessage.className =
+            "error";
+
+
+          statusMessage.innerHTML =
+            "<strong>Camera access was not granted.</strong><br><br>" +
+            "Error: " +
+            escapeHtml(
+              error.name || "Unknown error"
+            ) +
+            "<br><br>" +
+            escapeHtml(
+              error.message ||
+              "Please allow camera access and try again."
+            );
+
+
+          startButton.disabled = false;
+
+        }
+
+      }
+
+
+      // =====================================================
+      // TIMER
+      // =====================================================
+
+      function startTimer() {
+
+        timerInterval =
+          setInterval(function () {
+
+            if (examFailed) {
+
+              clearInterval(
+                timerInterval
+              );
+
+              return;
+
+            }
+
+
+            if (timeLeft <= 0) {
+
+              clearInterval(
+                timerInterval
+              );
+
+              terminateExam(
+                "Time expired."
+              );
+
+              return;
+
+            }
+
+
+            timeLeft--;
+
+
+            const minutes =
+              Math.floor(
+                timeLeft / 60
+              );
+
+
+            const seconds =
+              timeLeft % 60;
+
+
+            countdownElement.textContent =
+              String(minutes).padStart(
+                2,
+                "0"
+              ) +
+              ":" +
+              String(seconds).padStart(
+                2,
+                "0"
+              );
+
+          }, 1000);
+
+      }
+
+
+      // =====================================================
+      // SECURITY LISTENERS
+      // =====================================================
+
+      function setupSecurityListeners() {
+
+        document.addEventListener(
+          "visibilitychange",
+          handleVisibilityChange
+        );
+
+
+        /*
+          Optional extra protection:
+          Detect when browser loses focus.
+        */
+
+        window.addEventListener(
+          "blur",
+          handleWindowBlur
+        );
+
+      }
+
+
+      // =====================================================
+      // TAB SWITCH
+      // =====================================================
+
+      function handleVisibilityChange() {
+
+        if (
+          document.hidden &&
+          examStarted &&
+          !examFailed
+        ) {
+
+          terminateExam(
+            "You switched tabs or minimized the exam window."
+          );
+
+        }
+
+      }
+
+
+      // =====================================================
+      // WINDOW BLUR
+      // =====================================================
+
+      function handleWindowBlur() {
+
+        /*
+          We intentionally DON'T fail on blur alone.
+
+          Some browsers can trigger blur for harmless reasons.
+
+          visibilitychange is the primary tab/minimize detection.
+        */
+
+      }
+
+
+      // =====================================================
+      // TALLY EVENTS
+      // =====================================================
+
+      window.addEventListener(
+        "message",
+        function (event) {
+
+          /*
+            Tally sends postMessage events from the
+            embedded iframe.
+
+            We only process Tally messages.
+          */
+
+          if (
+            typeof event.data !== "string"
+          ) {
+            return;
+          }
+
+
+          // ---------------------------------------------
+          // PAGE VIEW
+          // ---------------------------------------------
+
+          if (
+            event.data.includes(
+              "Tally.FormPageView"
+            )
+          ) {
+
+            try {
+
+              const tallyEvent =
+                JSON.parse(event.data);
+
+
+              if (
+                tallyEvent &&
+                tallyEvent.payload
+              ) {
+
+                lastTallyPage =
+                  tallyEvent.payload.page;
+
+
+                currentPage.textContent =
+                  lastTallyPage;
+
+
+                /*
+                  Save locally as a backup.
+                */
+
+                localStorage.setItem(
+                  "pkt_last_page",
+                  String(lastTallyPage)
+                );
+
+              }
+
+            } catch (error) {
+
+              console.log(
+                "Could not read Tally page event.",
+                error
+              );
+
+            }
+
+          }
+
+
+          // ---------------------------------------------
+          // TALLY FORM SUBMITTED
+          // ---------------------------------------------
+
+          if (
+            event.data.includes(
+              "Tally.FormSubmitted"
+            )
+          ) {
+
+            console.log(
+              "Tally form submitted."
+            );
+
+          }
+
+        }
+      );
+
+
+      // =====================================================
+      // FAIL EXAM
+      // =====================================================
+
+      function terminateExam(reason) {
+
+        if (examFailed) {
+          return;
+        }
+
+
+        examFailed = true;
+
+
+        // ---------------------------------------------
+        // STOP TIMER
+        // ---------------------------------------------
+
+        if (timerInterval) {
+
+          clearInterval(
+            timerInterval
+          );
+
+          timerInterval = null;
+
+        }
+
+
+        // ---------------------------------------------
+        // SAVE LOCAL EXAM STATUS
+        // ---------------------------------------------
+
+        localStorage.setItem(
+          "pkt_exam_status",
+          "FAILED"
+        );
+
+
+        localStorage.setItem(
+          "pkt_agent_name",
+          agentName
+        );
+
+
+        localStorage.setItem(
+          "pkt_emp_id",
+          empId
+        );
+
+
+        localStorage.setItem(
+          "pkt_last_tally_page",
+          String(lastTallyPage)
+        );
+
+
+        localStorage.setItem(
+          "pkt_failure_reason",
+          reason
+        );
+
+
+        // ---------------------------------------------
+        // REMOVE TALLY
+        // ---------------------------------------------
+
+        testContainer.innerHTML = "";
+
+        testContainer.style.display =
+          "none";
+
+
+        // ---------------------------------------------
+        // HIDE TIMER
+        // ---------------------------------------------
+
+        timerContainer.style.display =
+          "none";
+
+
+        // ---------------------------------------------
+        // STOP CAMERA
+        // ---------------------------------------------
+
+        if (video.srcObject) {
+
+          video.srcObject
+            .getTracks()
+            .forEach(function (track) {
+
+              track.stop();
+
+            });
+
+
+          video.srcObject = null;
+
+        }
+
+
+        // ---------------------------------------------
+        // SHOW FAILURE
+        // ---------------------------------------------
+
+        statusMessage.className =
+          "error";
+
+
+        statusMessage.innerHTML =
+          "<strong>TEST FAILED</strong><br><br>" +
+          escapeHtml(reason) +
+          "<br><br>" +
+          "<strong>Agent:</strong> " +
+          escapeHtml(agentName) +
+          "<br>" +
+          "<strong>EMP ID:</strong> " +
+          escapeHtml(empId) +
+          "<br>" +
+          "<strong>Tally page reached:</strong> " +
+          escapeHtml(
+            String(lastTallyPage)
+          ) +
+          "<br><br>" +
+          "Your answers entered before the failure are retained by Tally as a partial submission, provided Partial Submissions is enabled.";
+
+      }
+
+
+      // =====================================================
+      // HTML ESCAPE
+      // =====================================================
+
+      function escapeHtml(value) {
+
+        return String(value)
+          .replace(
+            /&/g,
+            "&amp;"
+          )
+          .replace(
+            /</g,
+            "&lt;"
+          )
+          .replace(
+            />/g,
+            "&gt;"
+          )
+          .replace(
+            /"/g,
+            "&quot;"
+          )
+          .replace(
+            /'/g,
+            "&#039;"
+          );
+
+      }
+
+    </script>
+  </body>
+</html>
+```
